@@ -36,9 +36,10 @@ python nlrename.py "append '_backup'" ~/documents
 ```
 
 ## Note
-This project was self-generated due to API restrictions on primary discovery sources (e.g., Reddit).
+This repository was published under `fairyfemirins/nlrename-1780164961` due to namespace restrictions in cron mode.
+See [TRANSFER.md](TRANSFER.md) for transfer instructions.
 
-This repository was published under `fairyfemirins/nlrename-1780154551` due to namespace restrictions in cron mode.
+This project was self-generated due to API restrictions on primary discovery sources (e.g., Reddit).
 To transfer to `femirins/nlrename`:
 1. Go to: [https://github.com/fairyfemirins/nlrename-1780154551/settings](https://github.com/fairyfemirins/nlrename-1780154551/settings)
 2. Under "Danger Zone", select "Transfer repository".
