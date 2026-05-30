@@ -1,0 +1,11 @@
+LICENSE
+README.md
+nlrename.py
+setup.py
+nlrename.egg-info/PKG-INFO
+nlrename.egg-info/SOURCES.txt
+nlrename.egg-info/dependency_links.txt
+nlrename.egg-info/entry_points.txt
+nlrename.egg-info/requires.txt
+nlrename.egg-info/top_level.txt
+tests/test_nlrename.py
