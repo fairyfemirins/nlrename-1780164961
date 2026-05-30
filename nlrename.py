@@ -13,27 +13,29 @@ from dateutil.relativedelta import relativedelta
 
 @click.command()
 @click.argument('pattern', type=str)
+@click.argument('files', nargs=-1, type=click.Path(exists=True))
 @click.option('--dry-run', is_flag=True, help='Preview changes without renaming.')
 @click.option('--recursive', is_flag=True, help='Rename files in subdirectories.')
-def cli(pattern: str, dry_run: bool, recursive: bool):
+def cli(pattern: str, files, dry_run: bool, recursive: bool):
     """Rename files using natural language patterns."""
     # Parse pattern
     rename_ops = parse_pattern(pattern)
     if not rename_ops:
         click.echo("Error: Could not parse pattern. Examples:")
-        click.echo("  nlrename 'all PDFs to lowercase'")
-        click.echo("  nlrename 'prepend today's date'")
-        click.echo("  nlrename 'replace foo with bar'")
+        click.echo("  nlrename 'all to lowercase' file1.txt file2.pdf")
+        click.echo("  nlrename 'prepend today's date' *.jpg")
+        click.echo("  nlrename 'replace foo with bar' *.txt")
         return
 
     # Collect files
-    files = []
-    if recursive:
-        for root, _, filenames in os.walk('.'):
-            for filename in filenames:
-                files.append(os.path.join(root, filename))
-    else:
-        files = [f for f in os.listdir('.') if os.path.isfile(f)]
+    if not files:
+        files = []
+        if recursive:
+            for root, _, filenames in os.walk('.'):
+                for filename in filenames:
+                    files.append(os.path.join(root, filename))
+        else:
+            files = [f for f in os.listdir('.') if os.path.isfile(f)]
 
     # Debug: Print collected files
     click.echo(f"[DEBUG] Collected files: {files}")
@@ -117,6 +119,11 @@ def apply_rename_ops(filename: str, ops: list) -> str:
                 return filename  # Skip if extension not in tuple
 
     return f"{new_name}{new_ext}"
+
+
+def apply_transformations(filename, transformations):
+    """Alias for apply_rename_ops (for backward compatibility)."""
+    return apply_rename_ops(filename, transformations)
 
 
 if __name__ == '__main__':
