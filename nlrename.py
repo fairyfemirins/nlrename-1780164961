@@ -2,104 +2,157 @@
 """
 Natural Language File Renamer (nlrename)
 
-Rename files using natural language expressions:
-- `nlrename "today's date + original name"`
-- `nlrename "s/IMG/DSC/"`
-- `nlrename "lowercase all"`
-- `nlrename "uppercase all"`
-
-Usage:
-    nlrename [--dry-run] <expression> [files...]
+CLI tool to rename files using natural language instructions.
+Examples:
+  nlrename "add today's date to all PDFs" /path/to/files
+  nlrename "replace 'draft' with 'final'" /path/to/files --dry-run
+  nlrename "all files to lowercase" /path/to/files
 """
 
 import os
 import re
-import sys
-from datetime import datetime
-from typing import List, Optional, Callable
-
 import click
-from dateutil.relativedelta import relativedelta
+from datetime import datetime
+from typing import List, Optional
 
 
-def parse_expression(expression: str) -> callable:
-    """Parse natural language expression into a renaming function."""
-    expression = expression.strip().lower()
+class NaturalLanguageRenamer:
+    """Core logic for parsing natural language instructions and renaming files."""
 
-    # Date transformations
-    if "today's date" in expression:
-        today = datetime.now().strftime("%Y-%m-%d")
-        if "original name" in expression:
-            return lambda name: f"{today}_{name}"
-        return lambda name: f"{today}_{name}"
+    def __init__(self, instruction: str, dry_run: bool = False):
+        self.instruction = instruction.lower()
+        self.dry_run = dry_run
+        self.date_pattern = r"today's date|current date|date"
+        self.case_pattern = r"to (lowercase|uppercase|title case)"
+        self.replace_pattern = r"replace ['\"](.*?)['\"] with ['\"](.*?)['\"]"
+        self.prefix_suffix_pattern = r"(add|prepend|append) ['\"](.*?)['\"]"
 
-    # Regex substitution
-    if expression.startswith("s/"):
-        parts = expression[2:].split("/")
-        if len(parts) >= 2:
-            pattern, repl = parts[0], parts[1]
-            return lambda name: re.sub(pattern, repl, name)
+    def parse_instruction(self) -> dict:
+        """Parse the natural language instruction into a structured format."""
+        result = {
+            "action": "none",
+            "target": "all",
+            "pattern": None,
+            "replacement": None,
+            "case": None,
+            "prefix": None,
+            "suffix": None,
+        }
 
-    # Case transformations
-    if "lowercase" in expression:
-        return lambda name: name.lower()
-    if "uppercase" in expression:
-        return lambda name: name.upper()
-    if "titlecase" in expression:
-        return lambda name: name.title()
+        # Date-based renaming
+        if re.search(self.date_pattern, self.instruction):
+            result["action"] = "date"
+            result["target"] = "all"
 
-    # Default: prepend/append
-    return lambda name: f"{expression}_{name}"
+        # Case transformation
+        case_match = re.search(self.case_pattern, self.instruction)
+        if case_match:
+            result["action"] = "case"
+            result["case"] = case_match.group(1)
+            result["target"] = "all"
 
+        # Replace text
+        replace_match = re.search(self.replace_pattern, self.instruction)
+        if replace_match:
+            result["action"] = "replace"
+            result["pattern"] = replace_match.group(1)
+            result["replacement"] = replace_match.group(2)
+            result["target"] = "all"
 
-def rename_file(
-    old_path: str, new_name: str, dry_run: bool = False
-) -> Optional[str]:
-    """Rename a file and return the new path."""
-    dirname = os.path.dirname(old_path)
-    new_path = os.path.join(dirname, new_name)
-    
-    if dry_run:
-        click.echo(f"[DRY RUN] {old_path} -> {new_path}")
-        return new_path
-    
-    try:
-        os.rename(old_path, new_path)
-        return new_path
-    except OSError as e:
-        click.echo(f"Error renaming {old_path}: {e}", err=True)
-        return None
+        # Prefix/Suffix
+        prefix_suffix_match = re.search(self.prefix_suffix_pattern, self.instruction)
+        if prefix_suffix_match:
+            action, text = prefix_suffix_match.groups()
+            if action in ["add", "prepend"]:
+                result["action"] = "prefix"
+                result["prefix"] = text
+            elif action == "append":
+                result["action"] = "suffix"
+                result["suffix"] = text
+            result["target"] = "all"
+
+        return result
+
+    def generate_new_name(self, filename: str, parsed: dict) -> Optional[str]:
+        """Generate the new filename based on the parsed instruction."""
+        name, ext = os.path.splitext(filename)
+        new_name = name
+        new_ext = ext
+
+        if parsed["action"] == "date":
+            today = datetime.now().strftime("%Y-%m-%d")
+            new_name = f"{today}_{new_name}"
+
+        elif parsed["action"] == "case":
+            if parsed["case"] == "lowercase":
+                new_name = new_name.lower()
+                new_ext = new_ext.lower()
+            elif parsed["case"] == "uppercase":
+                new_name = new_name.upper()
+                new_ext = new_ext.upper()
+            elif parsed["case"] == "title case":
+                new_name = new_name.title()
+                new_ext = new_ext.title()
+
+        elif parsed["action"] == "replace":
+            new_name = new_name.replace(parsed["pattern"], parsed["replacement"])
+
+        elif parsed["action"] == "prefix":
+            new_name = f"{parsed['prefix']}{new_name}"
+
+        elif parsed["action"] == "suffix":
+            new_name = f"{new_name}{parsed['suffix']}"
+
+        return f"{new_name}{new_ext}"
+
+    def rename_files(self, directory: str, file_filter: Optional[str] = None) -> List[str]:
+        """Rename files in the directory based on the instruction."""
+        parsed = self.parse_instruction()
+        renamed = []
+
+        for filename in os.listdir(directory):
+            filepath = os.path.join(directory, filename)
+            if os.path.isdir(filepath):
+                continue
+            if file_filter and file_filter not in filename.lower():
+                continue
+
+            new_name = self.generate_new_name(filename, parsed)
+            if not new_name or new_name == filename:
+                continue
+
+            new_filepath = os.path.join(directory, new_name)
+            if not self.dry_run:
+                os.rename(filepath, new_filepath)
+            renamed.append(f"{filename} -> {new_name}")
+
+        return renamed
 
 
 @click.command()
-@click.argument("expression", type=str)
-@click.argument("files", type=click.Path(exists=True), nargs=-1)
-@click.option("--dry-run", is_flag=True, help="Show what would be renamed without actually renaming.")
-@click.option("--recursive", is_flag=True, help="Rename files in subdirectories recursively.")
-def main(expression: str, files: List[str], dry_run: bool, recursive: bool):
-    """Rename files using natural language expressions."""
-    if not files:
-        files = [f for f in os.listdir(".") if os.path.isfile(f)]
-    
-    if recursive:
-        files = [
-            os.path.join(root, f)
-            for root, _, filenames in os.walk(".")
-            for f in filenames
-        ]
-    
-    rename_func = parse_expression(expression)
-    
-    for file_path in files:
-        if not os.path.isfile(file_path):
-            continue
-        
-        dirname, old_name = os.path.split(file_path)
-        new_name = rename_func(old_name)
-        
-        if new_name != old_name:
-            rename_file(file_path, new_name, dry_run)
+@click.argument("instruction", type=str)
+@click.argument("directory", type=click.Path(exists=True))
+@click.option("--filter", "-f", type=str, help="Filter files by extension or substring (e.g., '.pdf')")
+@click.option("--dry-run", is_flag=True, help="Preview changes without renaming")
+@click.option("--debug", is_flag=True, help="Enable debug output")
+def cli(instruction: str, directory: str, filter: Optional[str], dry_run: bool, debug: bool):
+    """CLI entry point for nlrename."""
+    if debug:
+        click.echo(f"DEBUG: Instruction: {instruction}")
+        click.echo(f"DEBUG: Directory: {directory}")
+        click.echo(f"DEBUG: Filter: {filter}")
+        click.echo(f"DEBUG: Dry run: {dry_run}")
+
+    renamer = NaturalLanguageRenamer(instruction, dry_run)
+    renamed = renamer.rename_files(directory, filter)
+
+    if not renamed:
+        click.echo("No files matched the instruction.")
+        return
+
+    for rename in renamed:
+        click.echo(rename)
 
 
 if __name__ == "__main__":
-    main()
+    cli()

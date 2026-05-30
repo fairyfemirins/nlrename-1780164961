@@ -1,61 +1,43 @@
-# NL Rename: Natural Language File Renamer
+# Natural Language File Renamer (nlrename)
 
-Rename files using natural language expressions:
-- `nlrename "today's date + original name"`
-- `nlrename "s/IMG/DSC/"`
-- `nlrename "lowercase all"`
-- `nlrename "uppercase all"`
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-![Demo](https://via.placeholder.com/600x150?text=NL+Rename+Demo)
+A CLI tool to rename files using natural language instructions. No AI, no APIs — just regex, dates, and case transformations.
 
 ## Features
-- **Natural Language**: Rename files using intuitive expressions (e.g., `"today's date + original name"`).
-- **Regex Support**: Use `s/pattern/replacement/` to rename files with regex.
-- **Case Transformations**: Convert filenames to `lowercase`, `UPPERCASE`, or `TitleCase`.
-- **Dry Run**: Preview changes with `--dry-run`.
-- **Recursive**: Rename files in subdirectories with `--recursive`.
+- Rename files using natural language (e.g., `"add today's date to all PDFs"`).
+- Supports regex, date patterns, and case transformations.
+- Dry-run mode for previewing changes.
+- Filter files by extension or substring.
 
 ## Installation
 ```bash
-pip install click python-dateutil
+pip install --user click python-dateutil
+chmod +x nlrename.py
+sudo ln -s $(pwd)/nlrename.py /usr/local/bin/nlrename
 ```
 
 ## Usage
 ```bash
-# Rename all files in the current directory
-nlrename "today's date + original name"
+# Add today's date to all PDFs
+nlrename "add today's date to all PDFs" /path/to/files --filter ".pdf"
 
-# Rename specific files
-nlrename "s/IMG/DSC/" IMG_123.jpg IMG_456.jpg
+# Replace 'draft' with 'final' (dry run)
+nlrename "replace 'draft' with 'final'" /path/to/files --dry-run
 
-# Dry run (preview changes)
-nlrename --dry-run "lowercase all"
-
-# Recursive rename
-nlrename --recursive "uppercase all"
+# Convert all filenames to lowercase
+nlrename "all files to lowercase" /path/to/files
 ```
 
 ## Examples
-| Expression                  | Before       | After               |
-|----------------------------|--------------|---------------------|
-| `"today's date + original name"` | `notes.txt`  | `2026-05-30_notes.txt` |
-| `"s/IMG/DSC/"`            | `IMG_123.jpg`| `DSC_123.jpg`       |
-| `"lowercase all"`         | `TEST.TXT`   | `test.txt`          |
-| `"uppercase all"`         | `test.txt`   | `TEST.TXT`          |
-
-## Technical Architecture
-- **Language**: Python 3.11+
-- **Dependencies**: `click`, `python-dateutil`
-- **Entry Point**: `nlrename.py` (single-file CLI tool)
-- **Testing**: `unittest` (see `test_nlrename.py`)
-
-## Limitations
-- **No Undo**: Always use `--dry-run` before applying changes.
-- **No Conflict Handling**: Overwrites existing files if names collide.
+| Instruction                          | Before               | After                     |
+|-------------------------------------|----------------------|---------------------------|
+| `"add today's date to all PDFs"`   | `report.pdf`         | `2026-05-30_report.pdf`    |
+| `"replace 'draft' with 'final'"`   | `draft_report.pdf`   | `final_report.pdf`         |
+| `"all files to lowercase"`        | `DRAFT_REPORT.PDF`   | `draft_report.pdf`         |
 
 ## Note
-This repository was published under `fairyfemirins/nlrename-1780119157` due to namespace restrictions in cron mode.
-To transfer to `femirins/nlrename`:
-1. Go to: [https://github.com/fairyfemirins/nlrename-1780119157/settings](https://github.com/fairyfemirins/nlrename-1780119157/settings)
-2. Under "Danger Zone", select "Transfer repository".
-3. Enter `femirins/nlrename` as the new owner.
+This project was self-generated due to API restrictions on primary discovery sources (e.g., Reddit).
+
+## License
+MIT
